@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ملف Excel + بحث</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111827; --muted:#9ca3af; --text:#e5e7eb; --accent:#22c55e; --danger:#ef4444;
+      --line:#243244; --input:#0f172a;
+      --radius:14px;
+      --shadow: 0 8px 30px rgba(0,0,0,.35);
+      --pad:14px;
+      font-synthesis-weight: none;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Naskh Arabic", "Noto Sans Arabic", "Tahoma", sans-serif;
+      background: linear-gradient(180deg, #070a0f, #0b0f14 35%, #070a0f);
+      color:var(--text);
+      min-height:100vh;
+      padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    }
+    header{
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(11,15,20,.86);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+      padding: calc(10px + env(safe-area-inset-top)) var(--pad) 10px;
+    }
+    .row{display:flex; gap:10px; align-items:center}
+    .spacer{flex:1}
+    .btn{
+      border:1px solid var(--line);
+      background: rgba(17,24,39,.75);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.22);
+      cursor:pointer;
+      font-weight:600;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.12)}
+    .btn.danger{border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.10)}
+    .btn.small{padding:8px 10px; font-size:13px; border-radius:10px}
+    .btn.block{width:100%}
+    .container{padding: 14px var(--pad)}
+    .card{
+      background: rgba(17,24,39,.65);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .muted{color:var(--muted)}
+    .title{font-size:18px; font-weight:800; margin:0 0 6px}
+    .hint{font-size:13px; color:var(--muted); line-height:1.6}
+    .fixed-bottom{
+      position: fixed; left: 0; right: 0; bottom: 0;
+      padding: 10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+      background: rgba(11,15,20,.9);
+      border-top: 1px solid var(--line);
+      z-index: 30;
+      backdrop-filter: blur(10px);
+    }
+    input[type="file"]{display:none}
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding: 8px 10px;
+      border:1px solid var(--line);
+      background: rgba(15,23,42,.6);
+      border-radius: 999px;
+      font-size: 13px;
+    }
+    .pill b{font-weight:800}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    .searchbar{
+      display:flex; gap:10px; align-items:center;
+      margin-top: 10px;
+    }
+    .searchbar input{
+      flex:1;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border:1px solid var(--line);
+      background: rgba(15,23,42,.55);
+      color: var(--text);
+      outline:none;
+      font-size: 15px;
+    }
+    .searchbar input::placeholder{color: #94a3b8}
+    .kpis{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .kpis .pill{background: rgba(17,24,39,.55)}
+    .tablewrap{
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(2,6,23,.35);
+    }
+    table{
+      width:100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+    th, td{
+      border-bottom:1px solid rgba(36,50,68,.75);
+      padding: 10px 10px;
+      text-align:right;
+      vertical-align: top;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    th{
+      position: sticky;
+      top: 0;
+      background: rgba(17,24,39,.92);
+      z-index: 5;
+      font-weight: 900;
+    }
+    th .colfilter{
+      margin-top: 6px;
+      width: 100%;
+      padding: 8px 8px;
+      border-radius: 10px;
+      border:1px solid rgba(36,50,68,.95);
+      background: rgba(15,23,42,.8);
+      color: var(--text);
+      outline:none;
+      font-weight:600;
+      font-size: 13px;
+    }
+    th .colfilter::placeholder{color:#94a3b8; font-weight:500}
+    tr:hover td{background: rgba(148,163,184,.06)}
+    .actions-cell{min-width: 110px}
+    .stack{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .page{display:none}
+    .page.active{display:block}
+    .divider{height:1px; background: var(--line); margin: 12px 0}
+    .detail-grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .kv{
+      padding: 12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(15,23,42,.55);
+    }
+    .kv .k{font-size:12px; color:var(--muted); margin-bottom:6px}
+    .kv .v{font-size:16px; font-weight:800; word-break: break-word}
+    .toast{
+      position: fixed;
+      left: 12px; right: 12px;
+      bottom: calc(96px + env(safe-area-inset-bottom));
+      z-index: 40;
+      background: rgba(17,24,39,.92);
+      border:1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 12px;
+      box-shadow: var(--shadow);
+      display:none;
+    }
+    .toast.show{display:block}
+    .toast .t{font-weight:900; margin-bottom:4px}
+    .toast .d{font-size:13px; color:var(--muted); line-height:1.5}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <div>
+        <div style="font-weight:900; font-size:16px">ملف Excel + بحث</div>
+        <div class="muted" style="font-size:12px">يتم حفظ الملف داخل الهاتف (داخل المتصفح) لتجده كل مرة</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn primary" id="btnGoSearch" title="بحث">بحث</button>
+      <button class="btn" id="btnGoHome" style="display:none" title="الرئيسية">الرئيسية</button>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <main class="container page active" id="pageHome">
+    <div class="card">
+      <p class="title">تحميل ملف Excel</p>
+      <p class="hint">
+        • اضغط زر “اختيار ملف Excel” بالأسفل وحدد ملف <b>.xlsx</b> من هاتفك.<br/>
+        • سيتم حفظ البيانات تلقائيًا لكي تبقى موجودة عند فتح الـ HTML مرة ثانية.
+      </p>
+      <div class="divider"></div>
+      <div class="grid">
+        <div class="pill" id="statusPill"><b>الحالة:</b> <span id="statusText">لا يوجد ملف محفوظ بعد</span></div>
+        <div class="pill"><b>عدد الصفوف:</b> <span id="rowsCount">0</span></div>
+        <div class="pill"><b>آخر تحديث:</b> <span id="lastUpdated">—</span></div>
+      </div>
+      <div class="divider"></div>
+      <button class="btn danger block" id="btnClear">حذف الملف المحفوظ</button>
+    </div>
+  </main>
+
+  <!-- SEARCH -->
+  <main class="container page" id="pageSearch">
+    <div class="card">
+      <p class="title">البحث</p>
+
+      <div class="searchbar">
+        <input id="globalQuery" placeholder="بحث شامل (كل الأعمدة) — أو رقم سجل/هاتف حسب الشروط" inputmode="search" />
+        <button class="btn primary" id="btnGlobalSearch">بحث</button>
+      </div>
+
+      <div class="kpis">
+        <div class="pill"><b>إجمالي الصفوف:</b> <span id="kpiTotal">0</span></div>
+        <div class="pill"><b>نتائج التصفية:</b> <span id="kpiFiltered">0</span></div>
+        <div class="pill" id="kpiSameTownWrap" style="display:none"><b>نفس السجل والبلدة:</b> <span id="kpiSameTown">0</span></div>
+      </div>
+</div>
+
+    <div class="card">
+      <p class="title" style="margin-bottom:10px">الجدول</p>
+      <div class="tablewrap">
+        <table id="dataTable">
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="hint" style="margin-top:10px">
+        • فوق كل عمود يوجد فلتر خاص به (مثل إكسل).<br/>
+        • زر “عرض” في أول السطر يفتح صفحة مرتبة لمعلومات السطر.
+      </p>
+    </div>
+  </main>
+
+  <!-- DETAILS -->
+  <main class="container page" id="pageDetails">
+    <div class="card">
+      <p class="title">تفاصيل السطر</p>
+      <p class="hint">البيانات تظهر بشكل منظم لسهولة القراءة على الهاتف.</p>
+      <div class="divider"></div>
+      <div class="detail-grid" id="detailsGrid"></div>
+      <div class="divider"></div>
+      <button class="btn block" id="btnBackToSearch">رجوع للبحث</button>
+    </div>
+  </main>
+
+  <div class="fixed-bottom">
+    <div class="row">
+      <div class="spacer"></div>
+      <input type="file" id="excelFile" accept=".xlsx,.xls" />
+      <button class="btn primary block" id="btnPickExcel">اختيار ملف Excel وحفظه</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <div class="t" id="toastTitle"></div>
+    <div class="d" id="toastDesc"></div>
+  </div>
+
+  <!-- SheetJS (Excel parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    /***************
+     * Storage (IndexedDB)
+     ***************/
+    const DB_NAME = 'excel_local_db_v1';
+    const DB_STORE = 'workbook';
+    const DB_KEY = 'saved';
+
+    function openDB(){
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+          const db = req.result;
+          if(!db.objectStoreNames.contains(DB_STORE)){
+            db.createObjectStore(DB_STORE);
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function dbSet(value){
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put(value, DB_KEY);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function dbGet(){
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(DB_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function dbClear(){
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).delete(DB_KEY);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    /***************
+     * Helpers
+     ***************/
+    const $ = (id) => document.getElementById(id);
+
+    function showToast(title, desc){
+      $('toastTitle').textContent = title;
+      $('toastDesc').textContent = desc || '';
+      $('toast').classList.add('show');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => $('toast').classList.remove('show'), 3200);
+    }
+
+    function isDigitsOnly(s){
+      return /^[0-9]+$/.test((s||'').trim());
+    }
+
+    function normalizeCell(v){
+      if(v === null || v === undefined) return '';
+      if(typeof v === 'number') return String(v);
+      return String(v).trim();
+    }
+
+    function safeLower(s){
+      return (s||'').toString().toLowerCase();
+    }
+
+    function findColumn(headers, keywords){
+      // يعثر على العمود بالأولوية: تطابق كامل -> يبدأ بـ -> يحتوي على
+      const normHeaders = headers.map(h => (h||'').toString().trim());
+      const normLower = normHeaders.map(h => h.toLowerCase());
+      const keys = (keywords||[]).map(k => (k||'').toString().trim());
+      const keysLower = keys.map(k => k.toLowerCase());
+
+      // 1) تطابق كامل
+      for(let i=0;i<normHeaders.length;i++){
+        for(let j=0;j<keysLower.length;j++){
+          if(normLower[i] === keysLower[j] && keysLower[j] !== ''){
+            return {index:i, name:headers[i]};
+          }
+        }
+      }
+      // 2) يبدأ بـ
+      for(let i=0;i<normHeaders.length;i++){
+        for(let j=0;j<keysLower.length;j++){
+          const k = keysLower[j];
+          if(k && normLower[i].startsWith(k)){
+            return {index:i, name:headers[i]};
+          }
+        }
+      }
+      // 3) يحتوي على
+      for(let i=0;i<normHeaders.length;i++){
+        for(let j=0;j<keysLower.length;j++){
+          const k = keysLower[j];
+          if(k && normLower[i].includes(k)){
+            return {index:i, name:headers[i]};
+          }
+        }
+      }
+      return null;
+    }
+
+    function formatDateMaybe(v){
+      // Keep as-is; Excel dates might come as numbers or strings from SheetJS depending on parsing.
+      // We'll just stringify and show.
+      return normalizeCell(v);
+    }
+
+    /***************
+     * App State
+     ***************/
+    let HEADERS = [];
+    let ROWS = [];        // array of objects {h1:..., h2:...}
+    let RAW_ROWS = [];    // array of arrays (aligned with HEADERS)
+    let FILTERS = {};     // header -> text
+    let GLOBAL_QUERY = '';
+    let SELECTED_ROW_KEY = null; // used for duplicates selection
+
+    // Column roles (detected)
+    let COL_REG = null;   // السجل
+    let COL_TOWN = null;  // البلدة
+    let COL_PHONE = null; // الهاتف
+    let COL_DOB = null;   // تاريخ الولادة
+
+    // أعمدة الاسم (إن وُجدت في الملف)
+    let COL_FIRST = null;   // الاسم
+    let COL_FATHER = null;  // اسم الأب
+    let COL_LAST = null;    // الشهرة / اللقب
+function detectColumns(){
+      COL_REG = findColumn(HEADERS, ['السجل',' سجل','رقم السجل']);
+      COL_TOWN = findColumn(HEADERS, ['البلدة','بلدة']);
+      COL_PHONE = findColumn(HEADERS, ['هاتف','الهاتف','Phone']);
+      COL_DOB = findColumn(HEADERS, ['تاريخ الولادة','مواليد','DOB','Birth']);
+
+      // محاولة اكتشاف أعمدة الاسم تلقائياً
+      COL_FIRST = findColumn(HEADERS, ['الاسم','اسم','First','First Name','Given']);
+      COL_FATHER = findColumn(HEADERS, ['اسم الاب','اسم الأب','الأب','اب','Father']);
+      COL_LAST = findColumn(HEADERS, ['الشهرة','اللقب','عائلة','Family','Last','Last Name','Surname']);
+    }
+
+
+function rowKeyFromArray(arr){
+      // stable key for selection: prefer (السجل + البلدة + index)
+      const reg = COL_REG ? normalizeCell(arr[COL_REG.index]) : '';
+      const town = COL_TOWN ? normalizeCell(arr[COL_TOWN.index]) : '';
+      const phone = COL_PHONE ? normalizeCell(arr[COL_PHONE.index]) : '';
+      return [reg, town, phone, JSON.stringify(arr)].join('||');
+    }
+
+    /***************
+     * Routing
+     ***************/
+    function setPage(name){
+      const pages = ['Home','Search','Details'];
+      for(const p of pages){
+        $('page'+p).classList.remove('active');
+      }
+      $('page'+name).classList.add('active');
+
+      // header buttons
+      if(name === 'Home'){
+        $('btnGoHome').style.display = 'none';
+        $('btnGoSearch').style.display = 'inline-flex';
+      }else{
+        $('btnGoHome').style.display = 'inline-flex';
+        $('btnGoSearch').style.display = 'inline-flex';
+      }
+      if(name === 'Details'){
+        $('btnGoSearch').style.display = 'none';
+      }
+      window.scrollTo({top:0, behavior:'instant'});
+    }
+
+    /***************
+     * Load/Save workbook
+     ***************/
+    async function loadSaved(){
+      const saved = await dbGet();
+      if(saved && saved.headers && saved.rawRows){
+        HEADERS = saved.headers;
+        RAW_ROWS = saved.rawRows;
+
+        // ترحيل/ضمان وجود عمود "ملاحظة" حتى لو كان الملف القديم لا يحتويه
+        const NOTE_HEADER = 'ملاحظة';
+        if(!HEADERS.some(h => (h||'').toString().trim() === NOTE_HEADER)){
+          HEADERS.push(NOTE_HEADER);
+          RAW_ROWS = (RAW_ROWS || []).map(r => {
+            const rr = Array.isArray(r) ? r.slice() : [];
+            rr.push('');
+            return rr;
+          });
+        }
+        detectColumns();
+        buildHeader();
+        applyAndRender();
+        $('statusText').textContent = 'ملف محفوظ وجاهز';
+        $('rowsCount').textContent = RAW_ROWS.length;
+        $('lastUpdated').textContent = saved.updatedAt || '—';
+        $('kpiTotal').textContent = RAW_ROWS.length;
+        showToast('تم العثور على ملف محفوظ', 'تقدر تروح على البحث مباشرة.');
+      }else{
+        $('statusText').textContent = 'لا يوجد ملف محفوظ بعد';
+        $('rowsCount').textContent = '0';
+        $('lastUpdated').textContent = '—';
+        $('kpiTotal').textContent = '0';
+      }
+    }
+
+    async function saveWorkbook(headers, rawRows){
+      const now = new Date();
+      const updatedAt = now.toLocaleString('ar-LB');
+      await dbSet({headers, rawRows, updatedAt});
+      $('statusText').textContent = 'تم حفظ الملف بنجاح';
+      $('rowsCount').textContent = rawRows.length;
+      $('lastUpdated').textContent = updatedAt;
+      $('kpiTotal').textContent = rawRows.length;
+      showToast('تم حفظ الملف', 'افتح صفحة البحث لعرض الجدول.');
+    }
+
+    /***************
+     * Excel parsing
+     ***************/
+    async function parseExcelFile(file){
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array'});
+      const firstSheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[firstSheetName];
+
+      // Read as array of arrays
+      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      const headers = (aoa[0] || []).map(h => (h||'').toString().trim());
+      // إضافة عمود "ملاحظة" إذا لم يكن موجوداً في الإكسل (فارغ ويمكن تعبئته من داخل العرض)
+      const NOTE_HEADER = 'ملاحظة';
+      if(!headers.some(h => (h||'').toString().trim() === NOTE_HEADER)){
+        headers.push(NOTE_HEADER);
+      }
+      const rawRows = [];
+
+      for(let i=1;i<aoa.length;i++){
+        const row = aoa[i] || [];
+        // keep row if any cell non-empty
+        const hasAny = row.some(c => (c !== null && c !== undefined && String(c).trim() !== ''));
+        if(!hasAny) continue;
+
+        const aligned = headers.map((_, idx) => (row[idx] !== undefined ? row[idx] : ''));
+        rawRows.push(aligned);
+      }
+      return {headers, rawRows};
+    }
+
+    /***************
+     * Table building & filtering
+     ***************/
+    function buildHeader(){
+      const thead = $('thead');
+      thead.innerHTML = '';
+      const tr = document.createElement('tr');
+
+      // Actions column first (because RTL: it will appear at right visually, which is "first" for Arabic)
+      const thActions = document.createElement('th');
+      thActions.className = 'actions-cell';
+      thActions.textContent = 'إجراءات';
+      tr.appendChild(thActions);
+
+      for(const h of HEADERS){
+        const th = document.createElement('th');
+        const title = document.createElement('div');
+        title.textContent = h || '—';
+        th.appendChild(title);
+
+        const inp = document.createElement('input');
+        inp.className = 'colfilter';
+        inp.placeholder = 'بحث داخل العمود…';
+        inp.dataset.header = h;
+        inp.value = FILTERS[h] || '';
+        inp.addEventListener('input', (e) => {
+          FILTERS[h] = e.target.value;
+          SELECTED_ROW_KEY = null; // reset selection when filters change
+          applyAndRender();
+        });
+        th.appendChild(inp);
+
+        tr.appendChild(th);
+      }
+      thead.appendChild(tr);
+    }
+
+    function passesColumnFilters(rowArr){
+      for(let i=0;i<HEADERS.length;i++){
+        const h = HEADERS[i];
+        const f = (FILTERS[h] || '').trim();
+        if(!f) continue;
+
+        const cell = normalizeCell(rowArr[i]);
+        // Column filter behaves like Excel contains (text)
+        // If this is DOB column: allow digits/anything
+        if(safeLower(cell).includes(safeLower(f)) === false){
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function applyGlobalRuleSearch(rows){
+      const qraw = (GLOBAL_QUERY || '').trim();
+      if(!qraw) return rows;
+
+      const tokens = qraw.split(/\s+/).map(t => t.trim()).filter(Boolean);
+
+      // قسّم التوكنز إلى أرقام ونص
+      const numTokens = tokens.filter(t => isDigitsOnly(t));
+      const textTokens = tokens.filter(t => !isDigitsOnly(t)).map(t => safeLower(t));
+
+      // فلترة (AND) بحسب القواعد الحالية
+      const filtered = rows.filter(r => {
+        for(const tok of tokens){
+          if(isDigitsOnly(tok)){
+            const num = parseInt(tok, 10);
+            if(!Number.isFinite(num)) return false;
+
+            // الرقم < 1000: بحث بالضبط في عمود السجل
+            if(num < 1000){
+              if(!COL_REG) return false;
+              const v = normalizeCell(r[COL_REG.index]).replace(/\s+/g,'');
+              if(v !== String(num)) return false;
+            }else{
+              // الرقم >= 1000: بحث في عمود الهاتف (احتواء بعد حذف الفراغات)
+              if(!COL_PHONE) return false;
+              const v = normalizeCell(r[COL_PHONE.index]).replace(/\s+/g,'');
+              if(!v.includes(String(num))) return false;
+            }
+          }else{
+            // نص: احتواء ضمن أي عمود
+            const tl = safeLower(tok);
+            let hit = false;
+            for(let i=0;i<r.length;i++){
+              const cell = normalizeCell(r[i]);
+              if(safeLower(cell).includes(tl)){ hit = true; break; }
+            }
+            if(!hit) return false;
+          }
+        }
+        return true;
+      });
+
+      // ترتيب النتائج بالأولوية بحسب قواعد الاسم (بدون تغيير النتائج نفسها)
+      // - كلمة واحدة: أولوية لمطابقة "الاسم"
+      // - كلمتين: أولوية لمطابقة "الاسم + الشهرة" ثم "الاسم + اسم الأب"
+      // - ثلاث كلمات: أولوية لمطابقة "الاسم + اسم الأب + الشهرة"
+      // إذا لم تُكتشف أعمدة الاسم، يبقى الترتيب الطبيعي.
+      if(textTokens.length === 0) return filtered;
+
+      function cellLower(r, colObj){
+        if(!colObj) return '';
+        return safeLower(normalizeCell(r[colObj.index]));
+      }
+      function scoreRow(r){
+        let s = 0;
+
+        const first = cellLower(r, COL_FIRST);
+        const father = cellLower(r, COL_FATHER);
+        const last = cellLower(r, COL_LAST);
+
+        // مكافآت عامة: المطابقة في أعمدة الاسم أقوى من أي عمود آخر
+        const t1 = textTokens[0] || '';
+        const t2 = textTokens[1] || '';
+        const t3 = textTokens[2] || '';
+
+        // 1) كلمة واحدة
+        if(textTokens.length === 1){
+          if(first && first.includes(t1)) s += 300;
+          if(last && last.includes(t1)) s += 200;
+          if(father && father.includes(t1)) s += 150;
+
+          // مكافأة "بداية الخلية" لأنها غالباً أدق
+          if(first && first.startsWith(t1)) s += 60;
+          if(last && last.startsWith(t1)) s += 40;
+          if(father && father.startsWith(t1)) s += 30;
+        }
+
+        // 2) كلمتين
+        if(textTokens.length === 2){
+          const fn_ln = (first && first.includes(t1)) && (last && last.includes(t2));
+          const fn_fa = (first && first.includes(t1)) && (father && father.includes(t2));
+          const ln_fn = (last && last.includes(t1)) && (first && first.includes(t2)); // عكسياً
+          const fa_fn = (father && father.includes(t1)) && (first && first.includes(t2)); // عكسياً
+
+          if(fn_ln) s += 600;       // اسم + شهرة
+          else if(fn_fa) s += 520;  // اسم + أب
+          else if(ln_fn) s += 420;
+          else if(fa_fn) s += 380;
+
+          // مكافآت إضافية للبدايات
+          if(first && first.startsWith(t1)) s += 40;
+          if(last && last.startsWith(t2)) s += 30;
+          if(father && father.startsWith(t2)) s += 25;
+        }
+
+        // 3) ثلاث كلمات أو أكثر (نأخذ أول 3 كأقرب "ثلاثي")
+        if(textTokens.length >= 3){
+          const fn_fa_ln = (first && first.includes(t1)) && (father && father.includes(t2)) && (last && last.includes(t3));
+          const fn_ln_fa = (first && first.includes(t1)) && (last && last.includes(t2)) && (father && father.includes(t3));
+          const fn_ln_ln = (first && first.includes(t1)) && (last && last.includes(t2)) && (last && last.includes(t3)); // لقب مركّب
+          const fn_any = (first && first.includes(t1));
+
+          if(fn_fa_ln) s += 900;      // اسم + أب + شهرة (الأولوية)
+          else if(fn_ln_fa) s += 760; // اسم + شهرة + أب
+          else if(fn_ln_ln) s += 700; // اسم + شهرة مركّبة
+          else if(fn_any) s += 450;   // على الأقل الاسم الأول مضبوط
+
+          // مكافآت للبدايات
+          if(first && first.startsWith(t1)) s += 30;
+          if(father && father.startsWith(t2)) s += 25;
+          if(last && last.startsWith(t3)) s += 20;
+        }
+
+        // كسر التعادل: إذا في رقم سجل/بلدة ضمن البحث، أعطِ أولوية بسيطة لوجودهم
+        if(numTokens.length){
+          if(COL_REG && numTokens.some(n => parseInt(n,10) < 1000)) s += 5;
+          if(COL_PHONE && numTokens.some(n => parseInt(n,10) >= 1000)) s += 5;
+        }
+        return s;
+      }
+
+      // إذا ما في أعمدة اسم مكتشفة، ما منغيّر ترتيب النتائج
+      const hasNameCols = !!(COL_FIRST || COL_FATHER || COL_LAST);
+      if(!hasNameCols) return filtered;
+
+      return filtered
+        .map((r, idx) => ({r, idx, s: scoreRow(r)}))
+        .sort((a,b) => (b.s - a.s) || (a.idx - b.idx))
+        .map(x => x.r);
+    }
+
+
+function computeDuplicatesInfo(filteredRows){
+      // duplicates by "السجل" value (numeric string)
+      const map = new Map();
+      if(!COL_REG) return {dupSet:new Set(), byReg:map};
+
+      for(const r of filteredRows){
+        const reg = normalizeCell(r[COL_REG.index]);
+        if(!map.has(reg)) map.set(reg, []);
+        map.get(reg).push(r);
+      }
+      const dupSet = new Set();
+      for(const [reg, list] of map.entries()){
+        if(list.length > 1) dupSet.add(reg);
+      }
+      return {dupSet, byReg:map};
+    }
+
+    function updateKPIs(allRows, filteredRows){
+      $('kpiTotal').textContent = allRows.length;
+      $('kpiFiltered').textContent = filteredRows.length;
+
+      // KPI لنتيجة "تحديد": عدد نفس السجل ونفس البلدة
+      if(SELECTED_ROW_KEY && COL_REG && COL_TOWN){
+        // ابحث عن السطر المحدد داخل النتائج الحالية أو داخل كل البيانات
+        let selectedRow = null;
+        for(const r of filteredRows){
+          const key = rowKeyFromArray(r);
+          if(key === SELECTED_ROW_KEY){ selectedRow = r; break; }
+        }
+        if(!selectedRow){
+          // fallback: ابحث ضمن كل البيانات
+          for(const r of allRows){
+            const key = rowKeyFromArray(r);
+            if(key === SELECTED_ROW_KEY){ selectedRow = r; break; }
+          }
+        }
+
+        if(selectedRow){
+          const reg = normalizeCell(selectedRow[COL_REG.index]);
+          const town = normalizeCell(selectedRow[COL_TOWN.index]);
+          let count = 0;
+          for(const r of allRows){
+            if(normalizeCell(r[COL_REG.index]) === reg && normalizeCell(r[COL_TOWN.index]) === town){
+              count++;
+            }
+          }
+          $('kpiSameTown').textContent = String(count);
+          $('kpiSameTownWrap').style.display = 'inline-flex';
+          return;
+        }
+      }
+
+      $('kpiSameTownWrap').style.display = 'none';
+    }
+
+    function renderTable(filteredRows, idle=false){
+      const tbody = $('tbody');
+      tbody.innerHTML = '';
+
+      const {dupSet} = computeDuplicatesInfo(filteredRows);
+
+      for(const r of filteredRows){
+        const tr = document.createElement('tr');
+
+        // actions cell
+        const tdA = document.createElement('td');
+        tdA.className = 'actions-cell';
+        const stack = document.createElement('div');
+        stack.className = 'stack';
+
+        const btnView = document.createElement('button');
+        btnView.className = 'btn small primary';
+        btnView.textContent = 'عرض';
+
+        const btnPick = document.createElement('button');
+        btnPick.className = 'btn small';
+        btnPick.textContent = 'تحديد';
+
+        const key = rowKeyFromArray(r);
+
+        // Always allow "تحديد": يحدد السطر ويعطي نتيجة عدد نفس السجل ونفس البلدة
+        btnPick.addEventListener('click', () => {
+          SELECTED_ROW_KEY = key;
+
+          let msg = 'تم التحديد.';
+          if(COL_REG && COL_TOWN){
+            const reg = normalizeCell(r[COL_REG.index]);
+            const town = normalizeCell(r[COL_TOWN.index]);
+
+            if(!reg || !town){
+              msg = 'لا يمكن احتساب العدد لأن السجل أو البلدة فارغين في هذا السطر.';
+            }else{
+              let count = 0;
+              for(const rr of RAW_ROWS){
+                if(normalizeCell(rr[COL_REG.index]) === reg && normalizeCell(rr[COL_TOWN.index]) === town){
+                  count++;
+                }
+              }
+              msg = `عدد نفس السجل ونفس البلدة: ${count}`;
+            }
+          }
+          showToast('نتيجة التحديد', msg);
+          applyAndRender();
+        });
+
+        const regVal = COL_REG ? normalizeCell(r[COL_REG.index]) : '';
+        const isDup = (COL_REG && dupSet.has(regVal));
+
+        if(isDup){
+          // Require selection first for duplicates
+          btnView.addEventListener('click', () => {
+            if(SELECTED_ROW_KEY !== key){
+              showToast('يوجد أكثر من سجل بنفس الرقم', 'اضغط “تحديد” أولًا على السطر المطلوب ثم “عرض”.');
+              return;
+            }
+            openDetails(r, RAW_ROWS.indexOf(r));
+          });
+        }else{
+          btnView.addEventListener('click', () => openDetails(r));
+        }
+
+        stack.appendChild(btnView);
+        stack.appendChild(btnPick);
+
+        // Visual highlight if selected
+        if(SELECTED_ROW_KEY === key){
+          tdA.style.background = 'rgba(34,197,94,.08)';
+        }
+
+        tdA.appendChild(stack);
+        tr.appendChild(tdA);
+
+        for(let i=0;i<HEADERS.length;i++){
+          const td = document.createElement('td');
+          let v = r[i];
+          if(COL_DOB && i === COL_DOB.index) v = formatDateMaybe(v);
+          td.textContent = normalizeCell(v);
+          tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+      }
+
+      if(filteredRows.length === 0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = HEADERS.length + 1;
+        td.style.padding = '16px';
+        const msg = idle
+          ? 'اكتب كلمة أو رقم في البحث (أو استخدم فلاتر الأعمدة) ثم اضغط “بحث”.'
+          : 'لا توجد نتائج.';
+        td.innerHTML = `<span class="muted">${msg}</span>`;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+    }
+
+    
+    function hasAnyActiveFilter(){
+      if((GLOBAL_QUERY || '').trim()) return true;
+      for(const h of HEADERS){
+        if((FILTERS[h] || '').trim()) return true;
+      }
+      return false;
+    }
+
+function applyAndRender(){
+      const all = RAW_ROWS.slice();
+
+      // إذا ما في أي بحث/فلاتر، لا نعرض كل البيانات (لتجنب الـ loading)
+      if(!hasAnyActiveFilter()){
+        updateKPIs(all, []);
+        renderTable([], true);
+        return;
+      }
+
+      // Apply column filters
+      const afterCols = all.filter(passesColumnFilters);
+
+      // Apply global search rules
+      const afterGlobal = applyGlobalRuleSearch(afterCols);
+
+      updateKPIs(all, afterGlobal);
+      renderTable(afterGlobal, false);
+    }
+
+    /***************
+     * Details page
+     ***************/
+    function openDetails(rowArr, rowIndex){
+      const grid = $('detailsGrid');
+      grid.innerHTML = '';
+
+      // rowIndex لعمليات الحفظ (ملاحظة/هاتف)
+      const rIdx = Number.isFinite(rowIndex) ? rowIndex : RAW_ROWS.indexOf(rowArr);
+
+      for(let i=0;i<HEADERS.length;i++){
+        const h = HEADERS[i] || '—';
+        let v = rowArr[i];
+        if(COL_DOB && i === COL_DOB.index) v = formatDateMaybe(v);
+
+        // حقل قابل للتعديل: "ملاحظة"
+        if((h||'').toString().trim() === 'ملاحظة'){
+          const box = document.createElement('div');
+          box.className = 'kv';
+
+          const k = document.createElement('div');
+          k.className = 'k';
+          k.textContent = h;
+
+          const area = document.createElement('textarea');
+          area.style.width = '100%';
+          area.style.minHeight = '92px';
+          area.style.padding = '10px 10px';
+          area.style.borderRadius = '12px';
+          area.style.border = '1px solid rgba(36,50,68,.95)';
+          area.style.background = 'rgba(15,23,42,.8)';
+          area.style.color = 'var(--text)';
+          area.style.outline = 'none';
+          area.style.fontSize = '15px';
+          area.placeholder = 'اكتب ملاحظة…';
+          area.value = normalizeCell(v);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn small primary';
+          btn.style.marginTop = '10px';
+          btn.textContent = 'حفظ الملاحظة';
+          btn.addEventListener('click', async () => {
+            if(!Number.isFinite(rIdx) || rIdx < 0){
+              showToast('تعذر الحفظ', 'لم يتم العثور على رقم السطر.');
+              return;
+            }
+            RAW_ROWS[rIdx][i] = area.value || '';
+            // حفظ داخل الهاتف
+            try{
+              const now = new Date().toLocaleString('ar-LB');
+              await dbSet({headers: HEADERS, rawRows: RAW_ROWS, updatedAt: now});
+              $('lastUpdated').textContent = now;
+              showToast('تم الحفظ', 'تم حفظ الملاحظة.');
+            }catch(e){
+              console.error(e);
+              showToast('تعذر الحفظ', 'قد يكون التخزين معطّل في المتصفح.');
+            }
+          });
+
+          box.appendChild(k);
+          box.appendChild(area);
+          box.appendChild(btn);
+          grid.appendChild(box);
+          continue;
+        }
+
+        // حقل قابل للتعديل: الهاتف (إن وُجد عموده)
+        if(COL_PHONE && i === COL_PHONE.index){
+          const box = document.createElement('div');
+          box.className = 'kv';
+
+          const k = document.createElement('div');
+          k.className = 'k';
+          k.textContent = h;
+
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.inputMode = 'tel';
+          inp.style.width = '100%';
+          inp.style.padding = '10px 10px';
+          inp.style.borderRadius = '12px';
+          inp.style.border = '1px solid rgba(36,50,68,.95)';
+          inp.style.background = 'rgba(15,23,42,.8)';
+          inp.style.color = 'var(--text)';
+          inp.style.outline = 'none';
+          inp.style.fontSize = '15px';
+          inp.placeholder = 'أدخل رقم الهاتف…';
+          inp.value = normalizeCell(v);
+
+          const btn = document.createElement('button');
+          btn.className = 'btn small primary';
+          btn.style.marginTop = '10px';
+          btn.textContent = 'حفظ الهاتف';
+          btn.addEventListener('click', async () => {
+            if(!Number.isFinite(rIdx) || rIdx < 0){
+              showToast('تعذر الحفظ', 'لم يتم العثور على رقم السطر.');
+              return;
+            }
+            RAW_ROWS[rIdx][i] = (inp.value || '').trim();
+            try{
+              const now = new Date().toLocaleString('ar-LB');
+              await dbSet({headers: HEADERS, rawRows: RAW_ROWS, updatedAt: now});
+              $('lastUpdated').textContent = now;
+              showToast('تم الحفظ', 'تم حفظ رقم الهاتف.');
+            }catch(e){
+              console.error(e);
+              showToast('تعذر الحفظ', 'قد يكون التخزين معطّل في المتصفح.');
+            }
+          });
+
+          box.appendChild(k);
+          box.appendChild(inp);
+          box.appendChild(btn);
+          grid.appendChild(box);
+          continue;
+        }
+
+        // عرض عادي
+        const box = document.createElement('div');
+        box.className = 'kv';
+        const k = document.createElement('div');
+        k.className = 'k';
+        k.textContent = h;
+        const vv = document.createElement('div');
+        vv.className = 'v';
+        vv.textContent = normalizeCell(v) || '—';
+        box.appendChild(k);
+        box.appendChild(vv);
+        grid.appendChild(box);
+      }
+
+      setPage('Details');
+    }
+
+    /***************
+     * UI wiring
+     ***************/
+    $('btnPickExcel').addEventListener('click', () => $('excelFile').click());
+
+    $('excelFile').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+
+      try{
+        showToast('جاري قراءة الملف…', 'انتظر قليلاً');
+        const {headers, rawRows} = await parseExcelFile(file);
+
+        if(!headers.length){
+          showToast('خطأ', 'الملف لا يحتوي عناوين أعمدة في السطر الأول.');
+          return;
+        }
+
+        HEADERS = headers;
+        RAW_ROWS = rawRows;
+        FILTERS = {};
+        GLOBAL_QUERY = '';
+        SELECTED_ROW_KEY = null;
+
+        detectColumns();
+        buildHeader();
+        applyAndRender();
+
+        await saveWorkbook(headers, rawRows);
+
+        // update home stats
+        $('rowsCount').textContent = rawRows.length;
+        $('kpiTotal').textContent = rawRows.length;
+
+      }catch(err){
+        console.error(err);
+        showToast('لم يتم فتح الملف', 'تأكد أنه ملف Excel .xlsx وأن الإنترنت متوفر (لتحميل مكتبة القراءة).');
+      }finally{
+        e.target.value = '';
+      }
+    });
+
+    $('btnClear').addEventListener('click', async () => {
+      await dbClear();
+      HEADERS = [];
+      RAW_ROWS = [];
+      FILTERS = {};
+      GLOBAL_QUERY = '';
+      SELECTED_ROW_KEY = null;
+      $('thead').innerHTML = '';
+      $('tbody').innerHTML = '';
+      $('statusText').textContent = 'تم حذف الملف المحفوظ';
+      $('rowsCount').textContent = '0';
+      $('lastUpdated').textContent = '—';
+      $('kpiTotal').textContent = '0';
+      $('kpiFiltered').textContent = '0';
+      showToast('تم الحذف', 'يمكنك تحميل ملف جديد.');
+      setPage('Home');
+    });
+
+    $('btnGoSearch').addEventListener('click', () => {
+      if(!RAW_ROWS.length){
+        showToast('لا يوجد ملف بعد', 'حمّل ملف Excel أولاً من زر الأسفل.');
+        return;
+      }
+      setPage('Search');
+    });
+
+    $('btnGoHome').addEventListener('click', () => setPage('Home'));
+
+    $('btnBackToSearch').addEventListener('click', () => setPage('Search'));
+
+    $('btnGlobalSearch').addEventListener('click', () => {
+      GLOBAL_QUERY = $('globalQuery').value || '';
+      SELECTED_ROW_KEY = null;
+      applyAndRender();
+    });
+
+    $('globalQuery').addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        $('btnGlobalSearch').click();
+      }
+    });
+
+    // init
+    (async function init(){
+      try{
+        await loadSaved();
+      }catch(err){
+        console.error(err);
+        // fallback if IndexedDB blocked
+        showToast('ملاحظة', 'إذا المتصفح مانع التخزين (وضع خاص)، قد لا يتم حفظ الملف.');
+      }
+    })();
+  </script>
+</body>
+</html>
